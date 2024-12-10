@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -9,8 +10,11 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 
 class VideoStream extends StatefulWidget {
   final CameraDescription camera;
+  final String brokerAddress;
+  final int port;
+  final String topic;
 
-  const VideoStream({super.key, required this.camera});
+  const VideoStream({super.key, required this.camera, required this.brokerAddress, required this.port, required this.topic});
 
   @override
   State<VideoStream> createState() => _VideoStreamState();
@@ -22,9 +26,7 @@ class _VideoStreamState extends State<VideoStream> {
   late MqttServerClient _mqttClient;
   final RxList<String> printedValues = <String>[].obs;
 
-  final String brokerAddress = "192.168.240.180";
-  final int port = 1883;
-  final String topic = "video/stream";
+
 
   @override
   void initState() {
@@ -38,8 +40,8 @@ class _VideoStreamState extends State<VideoStream> {
     _initializeControllerFuture = _controller.initialize();
 
     // Initialize the MQTT client
-    _mqttClient = MqttServerClient(brokerAddress, '');
-    _mqttClient.port = port;
+    _mqttClient = MqttServerClient(widget.brokerAddress, 'flutter_client${DateTime.now().millisecondsSinceEpoch}');
+    _mqttClient.port = widget.port;
     _mqttClient.logging(on: true);
     _mqttClient.onConnected = onConnected;
     _mqttClient.onDisconnected = onDisconnected;
@@ -49,11 +51,25 @@ class _VideoStreamState extends State<VideoStream> {
 
   Future<void> connectMqtt() async {
     try {
+      print('Connecting to MQTT...');
+      _mqttClient.setProtocolV311();
+      _mqttClient.connectionMessage = MqttConnectMessage()
+          .withClientIdentifier('flutter_client_${DateTime.now().millisecondsSinceEpoch}')
+          .startClean()
+          .withWillQos(MqttQos.atLeastOnce);
+
       await _mqttClient.connect();
+      print('MQTT Connected');
+      printedValues.add('----MQTT Connected');
     } catch (e) {
-      print('MQTT connection failed: $e');
-      printedValues.add('MQTT connection failed: $e');
-      _mqttClient.disconnect();
+      print('MQTT NoConnectionException: $e');
+      printedValues.add('MQTT NoConnectionException: $e');
+    } finally {
+      if (_mqttClient.connectionStatus?.state != MqttConnectionState.connected) {
+        print('Connection failed, disconnecting...');
+        printedValues.add('----Connection failed, disconnecting...');
+        _mqttClient.disconnect();
+      }
     }
   }
 
@@ -74,7 +90,7 @@ class _VideoStreamState extends State<VideoStream> {
       message.addString(base64Data);
 
       var result = _mqttClient.publishMessage(
-          topic, MqttQos.atLeastOnce, message.payload!);
+          widget.topic, MqttQos.atLeastOnce, message.payload!);
       printedValues.add('publishMessage:  $result');
     }
   }

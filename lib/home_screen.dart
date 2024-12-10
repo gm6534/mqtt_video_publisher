@@ -5,18 +5,26 @@ import 'package:get/get.dart';
 import 'package:mqtt_video_publisher/video_stream.dart';
 
 class HomeScreen extends StatelessWidget {
-  final TextEditingController bAddressController = TextEditingController(text: '192.168.240.180');
-  final TextEditingController portController = TextEditingController(text: '1883');
-  final TextEditingController topicController = TextEditingController(text: 'video/stream');
+  final TextEditingController bAddressController =
+      TextEditingController(text: '192.168.240.180');
+  final TextEditingController portController =
+      TextEditingController(text: '1883');
+  final TextEditingController topicController =
+      TextEditingController(text: 'video/stream');
 
-  HomeScreen({super.key,});
+  HomeScreen({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('Home Screen', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),),
+        title: const Text(
+          'Home Screen',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
         backgroundColor: Colors.teal,
       ),
       body: Padding(
@@ -30,10 +38,17 @@ class HomeScreen extends StatelessWidget {
                 labelText: 'Broker Address',
                 border: OutlineInputBorder(),
               ),
+              onChanged: (value) {
+                bAddressController.text = value;
+              },
             ),
             SizedBox(height: 16.h),
             TextField(
               controller: portController,
+              keyboardType: TextInputType.number,
+              onChanged: (value) {
+                portController.text = value;
+              },
               decoration: const InputDecoration(
                 labelText: 'Port',
                 border: OutlineInputBorder(),
@@ -46,6 +61,9 @@ class HomeScreen extends StatelessWidget {
                 labelText: 'Topic',
                 border: OutlineInputBorder(),
               ),
+              onChanged: (value) {
+                topicController.text = value;
+              },
             ),
             SizedBox(height: 24.h),
             Center(
@@ -53,7 +71,13 @@ class HomeScreen extends StatelessWidget {
                 onPressed: () async {
                   final cameras = await availableCameras();
                   final firstCamera = cameras.first;
-                  Get.to(() => VideoStream(camera: firstCamera));
+                  int portValue = int.parse(portController.text);
+                  Get.to(() => VideoStream(
+                        camera: firstCamera,
+                        brokerAddress: bAddressController.text,
+                        port: portValue,
+                        topic: topicController.text,
+                      ));
                 },
                 child: const Text('Go to Stream'),
               ),
